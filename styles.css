@@ -2262,3 +2262,75 @@ select:focus-visible {
 
   object-fit: contain;
 }
+
+.comparison-header-actions {
+  display: flex;
+  align-items: center;
+
+  gap: 14px;
+}
+
+.comparison-minimize-button {
+  width: 30px;
+  height: 30px;
+
+  display: grid;
+  place-items: center;
+
+  flex-shrink: 0;
+
+  border:
+    1px solid
+    var(--color-border);
+
+  border-radius:
+    var(--radius-small);
+
+  background:
+    var(--color-surface-light);
+
+  color:
+    var(--color-text-muted);
+
+  font-size:
+    18px;
+
+  line-height:
+    1;
+
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.comparison-minimize-button:hover {
+  border-color:
+    var(--color-primary-dark);
+
+  background:
+    var(--color-surface-hover);
+
+  color:
+    var(--color-primary);
+}
+
+
+/* Minimized comparison state */
+
+.comparison-panel.minimized {
+  width:
+    min(420px, calc(100% - 44px));
+}
+
+.comparison-panel.minimized
+.comparison-header {
+  border-bottom:
+    0;
+}
+
+.comparison-panel.minimized
+.comparison-content {
+  display:
+    none;
+}

@@ -372,25 +372,38 @@
             </h2>
           </div>
 
-          <label class="comparison-toggle">
+          <div class="comparison-header-actions">
 
-            <input
-              id="comparisonToggle"
-              type="checkbox"
+            <label class="comparison-toggle">
+
+              <input
+                id="comparisonToggle"
+                type="checkbox"
+              >
+
+              <span class="toggle-track">
+                <span class="toggle-thumb"></span>
+              </span>
+
+              <span>
+                Compare
+              </span>
+
+            </label>
+
+            <button
+              id="minimizeComparisonButton"
+              class="comparison-minimize-button"
+              type="button"
+              title="Minimize comparison panel"
+              aria-label="Minimize comparison panel"
             >
+              &minus;
+            </button>
 
-            <span class="toggle-track">
-              <span class="toggle-thumb"></span>
-            </span>
-
-            <span>
-              Compare
-            </span>
-
-          </label>
+          </div>
 
         </div>
-
 
         <div class="comparison-content">
 

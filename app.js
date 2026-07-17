@@ -42,6 +42,8 @@ let currentBasemapIndex = 0;
 
 let activeBasemap = null;
 
+let aoilayer = null;
+
 let activeImageryLayer = null;
 
 let activeImageryId = null;
@@ -317,6 +319,16 @@ const toastMessage =
     "toastMessage"
   );
 
+const comparisonPanel =
+  document.getElementById(
+    "comparisonPanel"
+  );
+
+const minimizeComparisonButton =
+  document.getElementById(
+    "minimizeComparisonButton"
+  );
+
 
 // =========================
 // INITIALIZE MAP
@@ -431,6 +443,31 @@ function switchBasemap() {
 
 function resetMapView() {
 
+  if (
+    aoiLayer &&
+    aoiLayer.getBounds().isValid()
+  ) {
+
+    map.fitBounds(
+      aoiLayer.getBounds(),
+      {
+        padding: [
+          40,
+          40
+        ],
+
+        animate:
+          true,
+
+        duration:
+          0.8
+      }
+    );
+
+    return;
+
+  }
+
   map.fitBounds(
     MAP_CONFIG.projectBounds,
     {
@@ -446,6 +483,110 @@ function resetMapView() {
         0.8
     }
   );
+
+}
+
+async function loadAreaOfInterest() {
+
+  try {
+
+    const response =
+      await fetch(
+        "./data/aoi/POC_Border.geojson"
+      );
+
+    if (
+      !response.ok
+    ) {
+
+      throw new Error(
+        `AOI request failed: ${response.status}`
+      );
+
+    }
+
+    const geojson =
+      await response.json();
+
+    aoiLayer =
+      L.geoJSON(
+        geojson,
+        {
+          style: {
+            color:
+              "#f2c94c",
+
+            weight:
+              2.5,
+
+            opacity:
+              1,
+
+            fillColor:
+              "#f2c94c",
+
+            fillOpacity:
+              0.06,
+
+            dashArray:
+              "7 5"
+          },
+
+          onEachFeature:
+            function (
+              feature,
+              layer
+            ) {
+
+              const area =
+                feature.properties?.Area;
+
+              const areaLabel =
+                typeof area === "number"
+                  ? `${area.toFixed(2)} km²`
+                  : "Not available";
+
+              layer.bindPopup(
+                `
+                  <strong>
+                    BIMP-EAGA POC Area of Interest
+                  </strong>
+
+                  <br>
+
+                  Area: ${areaLabel}
+                `
+              );
+
+            }
+        }
+      )
+      .addTo(
+        map
+      );
+
+    aoiLayer.bringToFront();
+
+    resetMapView();
+
+    showToast(
+      "BIMP-EAGA area of interest loaded."
+    );
+
+  } catch (error) {
+
+    console.error(
+      "AOI loading error:",
+      error
+    );
+
+    showToast(
+      "Unable to load the AOI GeoJSON."
+    );
+
+    resetMapView();
+
+  }
 
 }
 
@@ -563,6 +704,30 @@ function expandSidebar() {
 
     },
     260
+  );
+
+}
+
+function toggleComparisonPanel() {
+
+  const isMinimized =
+    comparisonPanel.classList.toggle(
+      "minimized"
+    );
+
+  minimizeComparisonButton.innerHTML =
+    isMinimized
+      ? "+"
+      : "&minus;";
+
+  minimizeComparisonButton.title =
+    isMinimized
+      ? "Expand comparison panel"
+      : "Minimize comparison panel";
+
+  minimizeComparisonButton.setAttribute(
+    "aria-label",
+    minimizeComparisonButton.title
   );
 
 }
@@ -1488,6 +1653,11 @@ opacitySlider.addEventListener(
   updateOpacitySlider
 );
 
+minimizeComparisonButton.addEventListener(
+  "click",
+  toggleComparisonPanel
+);
+
 
 window.addEventListener(
   "resize",
@@ -1513,7 +1683,7 @@ updateComparisonOptions();
 
 renderImageryCatalogue();
 
-resetMapView();
+loadAreaOfInterest();
 
 console.log(
   "BIMP-EAGA Border Imagery Viewer initialized."
