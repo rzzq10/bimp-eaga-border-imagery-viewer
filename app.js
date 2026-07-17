@@ -227,6 +227,35 @@ const POSTPROCESSING_DATASETS = [
 
     filename:
       "LogDetMask_Nov-Apr.tif"
+  },
+
+    {
+    name:
+      "Infrastructure Detection — Overall",
+
+    periodLabel:
+      "Nov 2025 – Apr 2026",
+
+    startDate:
+      "2025-11-01",
+
+    endDate:
+      "2026-04-01",
+
+    filename:
+      "InfraDet_NovApr_v3.tif",
+
+    source:
+      "LC60 / Sentinel-1 VV",
+
+    category:
+      "Infrastructure",
+
+    color:
+      "rgba(0, 220, 255, 0.95)",
+
+    comparisonEligible:
+      false
   }
 
 ];
@@ -900,6 +929,10 @@ async function loadPostProcessingDatasets() {
           arrayBuffer
         );
 
+      const detectionColor =
+        config.color ||
+        "rgba(255, 35, 35, 0.85)";
+
       const rasterLayer =
         new GeoRasterLayer(
           {
@@ -927,7 +960,7 @@ async function loadPostProcessingDatasets() {
                   value === 1
                 ) {
 
-                  return "rgba(255, 35, 35, 0.85)";
+                  return detectionColor;
 
                 }
 
@@ -959,7 +992,19 @@ async function loadPostProcessingDatasets() {
           config.endDate,
 
         source:
+          config.source ||
           "LC60 / Sentinel-1 VH",
+
+        category:
+          config.category ||
+          "Deforestation",
+
+        color:
+          detectionColor,
+
+        comparisonEligible:
+          config.comparisonEligible !==
+          false,
 
         visible:
           false,
@@ -1699,15 +1744,33 @@ function getActiveDataset() {
 
 function updateComparisonOptions() {
 
+  const comparableDatasets =
+    imageryDatasets.filter(
+      function (dataset) {
+
+        return (
+          dataset.comparisonEligible !==
+          false
+        );
+
+      }
+    );
+
   const options =
-    imageryDatasets
+    comparableDatasets
       .map(
         function (dataset) {
+
+          const dateLabel =
+            dataset.periodLabel ||
+            formatDate(
+              dataset.date
+            );
 
           return `
             <option value="${dataset.id}">
               ${escapeHtml(dataset.name)}
-              — ${formatDate(dataset.date)}
+              — ${escapeHtml(dateLabel)}
             </option>
           `;
 
@@ -1732,7 +1795,7 @@ function updateComparisonOptions() {
     `;
 
   const hasEnoughImagery =
-    imageryDatasets.length >= 2;
+    comparableDatasets.length >= 2;
 
   beforeImagerySelect.disabled =
     !hasEnoughImagery;
@@ -1779,7 +1842,10 @@ function createComparisonLayer(
             value === 1
           ) {
 
-            return "rgba(255, 35, 35, 0.9)";
+            return (
+              dataset.color ||
+              "rgba(255, 35, 35, 0.9)"
+            );
 
           }
 
