@@ -2334,3 +2334,87 @@ select:focus-visible {
   display:
     none;
 }
+
+.imagery-visibility-button {
+  width: 30px;
+  height: 30px;
+
+  display: grid;
+  place-items: center;
+
+  border:
+    1px solid
+    var(--color-border);
+
+  border-radius:
+    var(--radius-small);
+
+  background:
+    transparent;
+
+  color:
+    var(--color-text-subtle);
+
+  transition:
+    background var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast);
+}
+
+.imagery-visibility-button:hover {
+  border-color:
+    var(--color-border-light);
+
+  background:
+    var(--color-surface);
+
+  color:
+    var(--color-text);
+}
+
+.imagery-visibility-button.visible {
+  border-color:
+    var(--color-primary-dark);
+
+  background:
+    rgba(242, 201, 76, 0.1);
+
+  color:
+    var(--color-primary);
+}
+
+.visibility-eye {
+  position: relative;
+
+  width: 18px;
+  height: 12px;
+
+  display: block;
+
+  border:
+    1.5px solid
+    currentColor;
+
+  border-radius:
+    50%;
+}
+
+.visibility-eye::after {
+  content: "";
+
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  width: 4px;
+  height: 4px;
+
+  border-radius:
+    50%;
+
+  background:
+    currentColor;
+
+  transform:
+    translate(-50%, -50%);
+}
