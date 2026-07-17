@@ -1,0 +1,23 @@
+# Geospatial datasets
+data/
+*.tif
+*.tiff
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.gpkg
+*.zip
+
+# Operating system files
+.DS_Store
+Thumbs.db
+
+# VS Code
+.vscode/
+
+# Logs and temporary files
+*.log
+temp/
+tmp/

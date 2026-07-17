@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <meta
+    name="description"
+    content="BIMP-EAGA Border Imagery Viewer"
+  >
+
+  <title>
+    BIMP-EAGA | Border Imagery Viewer
+  </title>
+
+  <!-- Application CSS -->
+
+    <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  >
+
+  <link
+    rel="stylesheet"
+    href="styles.css"
+  >
+</head>
+
+<body>
+
+  <!-- =========================
+       APPLICATION HEADER
+  ========================== -->
+  <header class="app-header">
+
+    <div class="brand">
+
+      <div class="brand-logo">
+
+        <img
+          src="assets/bimp-eaga_logo.jpg"
+          alt="BIMP-EAGA Logo"
+        >
+
+      </div>
+
+      <div class="brand-text">
+        <h1>
+          BIMP-EAGA
+        </h1>
+
+        <p>
+          Border Imagery Viewer
+        </p>
+      </div>
+
+    </div>
+
+    <div class="header-actions">
+
+      <div class="system-status">
+        <span class="status-dot"></span>
+        <span>System Ready</span>
+      </div>
+
+      <button
+        id="resetViewButton"
+        class="header-button"
+        type="button"
+        title="Reset map view"
+      >
+        Reset View
+      </button>
+
+    </div>
+
+  </header>
+
+
+  <!-- =========================
+       APPLICATION WORKSPACE
+  ========================== -->
+  <main class="app-workspace">
+
+    <!-- =========================
+         IMAGERY SIDEBAR
+    ========================== -->
+    <aside
+      id="imagerySidebar"
+      class="imagery-sidebar"
+    >
+
+      <div class="sidebar-header">
+
+        <div>
+          <span class="section-label">
+            Dataset
+          </span>
+
+          <h2>
+            Imagery Catalogue
+          </h2>
+        </div>
+
+        <button
+          id="collapseSidebarButton"
+          class="icon-button"
+          type="button"
+          title="Collapse sidebar"
+          aria-label="Collapse imagery sidebar"
+        >
+          &lsaquo;
+        </button>
+
+      </div>
+
+
+      <!-- Upload area -->
+      <section class="upload-section">
+
+        <label
+          class="upload-button"
+          for="geotiffInput"
+        >
+          <span class="upload-icon">
+            +
+          </span>
+
+          <span>
+            Add GeoTIFF Imagery
+          </span>
+        </label>
+
+        <input
+          id="geotiffInput"
+          type="file"
+          accept=".tif,.tiff,image/tiff"
+          multiple
+          hidden
+        >
+
+        <p class="upload-hint">
+          Supported format: GeoTIFF (.tif, .tiff)
+        </p>
+
+      </section>
+
+
+      <!-- Search -->
+      <section class="catalogue-tools">
+
+        <label
+          class="search-field"
+          for="imagerySearchInput"
+        >
+          <span class="search-icon">
+            &#128269;
+          </span>
+
+          <input
+            id="imagerySearchInput"
+            type="search"
+            placeholder="Search imagery..."
+            autocomplete="off"
+          >
+        </label>
+
+      </section>
+
+
+      <!-- Imagery list -->
+      <section
+        id="imageryList"
+        class="imagery-list"
+        aria-label="Available imagery"
+      >
+
+        <div
+          id="imageryEmptyState"
+          class="empty-state"
+        >
+          <div class="empty-state-icon">
+            &#9638;
+          </div>
+
+          <h3>
+            No imagery loaded
+          </h3>
+
+          <p>
+            Add a GeoTIFF file to begin exploring imagery over time.
+          </p>
+        </div>
+
+      </section>
+
+
+      <!-- Catalogue summary -->
+      <footer class="sidebar-footer">
+
+        <div class="summary-item">
+          <span>Datasets</span>
+
+          <strong id="datasetCount">
+            0
+          </strong>
+        </div>
+
+        <div class="summary-divider"></div>
+
+        <div class="summary-item">
+          <span>Selected</span>
+
+          <strong id="selectedCount">
+            0
+          </strong>
+        </div>
+
+      </footer>
+
+    </aside>
+
+
+    <!-- Collapsed sidebar button -->
+    <button
+      id="expandSidebarButton"
+      class="expand-sidebar-button"
+      type="button"
+      title="Open imagery catalogue"
+      aria-label="Open imagery catalogue"
+      hidden
+    >
+      &rsaquo;
+    </button>
+
+
+    <!-- =========================
+         MAP WORKSPACE
+    ========================== -->
+    <section class="map-workspace">
+
+      <!-- Leaflet map -->
+      <div
+        id="map"
+        aria-label="BIMP-EAGA imagery map"
+      ></div>
+
+
+      <!-- Map title -->
+      <div class="map-title-panel">
+
+        <span class="section-label">
+          Area of Interest
+        </span>
+
+        <strong>
+          Brunei–Sarawak Border
+        </strong>
+
+      </div>
+
+
+      <!-- Map tools -->
+      <div class="map-tools">
+
+        <button
+          id="zoomToImageryButton"
+          class="map-tool-button"
+          type="button"
+          title="Zoom to selected imagery"
+          disabled
+        >
+          Zoom to Imagery
+        </button>
+
+        <button
+          id="toggleBasemapButton"
+          class="map-tool-button"
+          type="button"
+          title="Change basemap"
+        >
+          Basemap
+        </button>
+
+      </div>
+
+
+      <!-- Imagery details -->
+      <aside
+        id="imageryDetailsPanel"
+        class="imagery-details-panel"
+        hidden
+      >
+
+        <div class="details-header">
+
+          <div>
+            <span class="section-label">
+              Selected Imagery
+            </span>
+
+            <h3 id="detailsTitle">
+              No imagery selected
+            </h3>
+          </div>
+
+          <button
+            id="closeDetailsButton"
+            class="icon-button"
+            type="button"
+            title="Close imagery details"
+            aria-label="Close imagery details"
+          >
+            &times;
+          </button>
+
+        </div>
+
+        <dl class="metadata-list">
+
+          <div>
+            <dt>Capture date</dt>
+            <dd id="detailsDate">—</dd>
+          </div>
+
+          <div>
+            <dt>Filename</dt>
+            <dd id="detailsFilename">—</dd>
+          </div>
+
+          <div>
+            <dt>Format</dt>
+            <dd id="detailsFormat">GeoTIFF</dd>
+          </div>
+
+          <div>
+            <dt>File size</dt>
+            <dd id="detailsFileSize">—</dd>
+          </div>
+
+          <div>
+            <dt>Coordinate system</dt>
+            <dd id="detailsCrs">—</dd>
+          </div>
+
+        </dl>
+
+      </aside>
+
+
+      <!-- =========================
+           COMPARISON PANEL
+      ========================== -->
+      <section
+        id="comparisonPanel"
+        class="comparison-panel"
+      >
+
+        <div class="comparison-header">
+
+          <div>
+            <span class="section-label">
+              Temporal Comparison
+            </span>
+
+            <h2>
+              Compare Imagery
+            </h2>
+          </div>
+
+          <label class="comparison-toggle">
+
+            <input
+              id="comparisonToggle"
+              type="checkbox"
+            >
+
+            <span class="toggle-track">
+              <span class="toggle-thumb"></span>
+            </span>
+
+            <span>
+              Compare
+            </span>
+
+          </label>
+
+        </div>
+
+
+        <div class="comparison-content">
+
+          <!-- Before imagery -->
+          <label class="date-selector">
+
+            <span class="selector-label">
+              Before
+            </span>
+
+            <select
+              id="beforeImagerySelect"
+              disabled
+            >
+              <option value="">
+                Select imagery
+              </option>
+            </select>
+
+          </label>
+
+
+          <!-- Swap comparison -->
+          <button
+            id="swapComparisonButton"
+            class="swap-button"
+            type="button"
+            title="Swap before and after imagery"
+            aria-label="Swap before and after imagery"
+            disabled
+          >
+            &#8646;
+          </button>
+
+
+          <!-- After imagery -->
+          <label class="date-selector">
+
+            <span class="selector-label">
+              After
+            </span>
+
+            <select
+              id="afterImagerySelect"
+              disabled
+            >
+              <option value="">
+                Select imagery
+              </option>
+            </select>
+
+          </label>
+
+
+          <!-- Swipe position -->
+          <label class="slider-control">
+
+            <span>
+              Swipe
+            </span>
+
+            <input
+              id="comparisonSlider"
+              type="range"
+              min="0"
+              max="100"
+              value="50"
+              disabled
+            >
+
+            <output id="comparisonSliderValue">
+              50%
+            </output>
+
+          </label>
+
+
+          <!-- Opacity -->
+          <label class="slider-control">
+
+            <span>
+              Opacity
+            </span>
+
+            <input
+              id="opacitySlider"
+              type="range"
+              min="0"
+              max="100"
+              value="100"
+              disabled
+            >
+
+            <output id="opacitySliderValue">
+              100%
+            </output>
+
+          </label>
+
+        </div>
+
+      </section>
+
+
+      <!-- Map information -->
+      <div class="map-information">
+
+        <span id="mapCoordinates">
+          Lat: — &nbsp; Lon: —
+        </span>
+
+        <span class="map-information-divider"></span>
+
+        <span id="mapZoomLevel">
+          Zoom: —
+        </span>
+
+      </div>
+
+
+      <!-- Comparison divider -->
+      <div
+        id="comparisonDivider"
+        class="comparison-divider"
+        hidden
+      >
+        <span class="divider-handle">
+          &#8646;
+        </span>
+      </div>
+
+    </section>
+
+  </main>
+
+
+  <!-- =========================
+       IMPORT DIALOG
+  ========================== -->
+  <dialog
+    id="importDialog"
+    class="import-dialog"
+  >
+
+    <form
+      id="importForm"
+      method="dialog"
+    >
+
+      <div class="dialog-header">
+
+        <div>
+          <span class="section-label">
+            New Dataset
+          </span>
+
+          <h2>
+            Add Imagery Details
+          </h2>
+        </div>
+
+        <button
+          id="closeImportDialogButton"
+          class="icon-button"
+          type="button"
+          aria-label="Close import dialog"
+        >
+          &times;
+        </button>
+
+      </div>
+
+
+      <div class="dialog-body">
+
+        <label class="form-field">
+
+          <span>Imagery name</span>
+
+          <input
+            id="imageryNameInput"
+            type="text"
+            placeholder="Example: Brunei Border 2024"
+            required
+          >
+
+        </label>
+
+
+        <label class="form-field">
+
+          <span>Capture date</span>
+
+          <input
+            id="captureDateInput"
+            type="date"
+            required
+          >
+
+        </label>
+
+
+        <label class="form-field">
+
+          <span>Source</span>
+
+          <input
+            id="imagerySourceInput"
+            type="text"
+            placeholder="Example: Sentinel-1"
+          >
+
+        </label>
+
+
+        <div class="selected-file">
+
+          <span>
+            Selected file
+          </span>
+
+          <strong id="selectedFileName">
+            No file selected
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="dialog-actions">
+
+        <button
+          id="cancelImportButton"
+          class="secondary-button"
+          type="button"
+        >
+          Cancel
+        </button>
+
+        <button
+          class="primary-button"
+          type="submit"
+        >
+          Add to Map
+        </button>
+
+      </div>
+
+    </form>
+
+  </dialog>
+
+
+  <!-- =========================
+       NOTIFICATION
+  ========================== -->
+  <div
+    id="toast"
+    class="toast"
+    role="status"
+    aria-live="polite"
+    hidden
+  >
+    <span id="toastMessage"></span>
+  </div>
+
+    <!-- Leaflet -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  ></script>
+
+  <!-- GeoTIFF parser -->
+  <script
+    src="https://unpkg.com/georaster"
+  ></script>
+
+  <!-- Leaflet GeoRaster renderer -->
+  <script
+    src="https://unpkg.com/georaster-layer-for-leaflet"
+  ></script>
+
+  <!-- Application -->
+  <script src="./app.js?v=2"></script>
+
+</body>
+</html>
+
+</body>
+</html>
+
+</body>
+</html>
