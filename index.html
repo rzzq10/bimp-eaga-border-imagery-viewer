@@ -60,6 +60,29 @@
 
     </div>
 
+    <nav
+      class="workspace-mode-switch"
+      aria-label="Workspace mode"
+    >
+      <button
+        id="imageryModeButton"
+        class="workspace-mode-button active"
+        type="button"
+        aria-pressed="true"
+      >
+        Imagery Intelligence
+      </button>
+
+      <button
+        id="sensorModeButton"
+        class="workspace-mode-button"
+        type="button"
+        aria-pressed="false"
+      >
+        Sensor Network
+      </button>
+    </nav>
+
     <div class="header-actions">
 
       <div class="system-status">
@@ -96,14 +119,16 @@
 
       <div class="sidebar-header">
 
-        <div>
-          <span class="section-label">
-            Dataset
-          </span>
+        <span
+          id="sidebarSectionLabel"
+          class="section-label"
+        >
+          Dataset
+        </span>
 
-          <h2>
-            Imagery Catalogue
-          </h2>
+        <h2 id="sidebarTitle">
+          Imagery Catalogue
+        </h2>
         </div>
 
         <button
@@ -198,6 +223,35 @@
 
       </section>
 
+      <section
+        id="sensorCatalogue"
+        class="sensor-catalogue"
+        aria-label="Placeholder sensor network"
+        hidden
+      >
+        <div class="sensor-demo-notice">
+          <strong>Demonstration Data</strong>
+
+          <p>
+            These sensors are placeholders and do not
+            represent deployed field equipment.
+          </p>
+        </div>
+
+        <div class="sensor-summary">
+          <span>Placeholder sensors</span>
+
+          <strong id="sensorCount">
+            0
+          </strong>
+        </div>
+
+        <div
+          id="sensorList"
+          class="sensor-list"
+        ></div>
+      </section>
+
 
       <!-- Catalogue summary -->
       <footer class="sidebar-footer">
@@ -241,28 +295,48 @@
     <!-- =========================
          MAP WORKSPACE
     ========================== -->
-    <section class="map-workspace">
+ <section class="map-workspace">
 
-      <!-- Leaflet map -->
-      <div
-        id="map"
-        aria-label="BIMP-EAGA imagery map"
-      ></div>
+  <!-- Leaflet map -->
+  <div
+    id="map"
+    aria-label="BIMP-EAGA imagery map"
+  ></div>
 
 
-      <!-- Map title -->
-      <div class="map-title-panel">
+  <!-- Map title -->
+  <div class="map-title-panel">
 
-        <span class="section-label">
-          Area of Interest
-        </span>
+    <span class="section-label">
+      Area of Interest
+    </span>
 
-        <strong>
-          Brunei–Sarawak Border
-        </strong>
+    <strong>
+      Brunei–Sarawak Border
+    </strong>
 
-      </div>
+  </div>
 
+
+  <!-- AOI overview button -->
+  <button
+    id="aoiOverviewButton"
+    class="aoi-overview-map-button"
+    type="button"
+  >
+
+    <span
+      class="aoi-overview-button-icon"
+      aria-hidden="true"
+    >
+      ▦
+    </span>
+
+    <span>
+      AOI Overview
+    </span>
+
+  </button>
 
       <!-- Map tools -->
       <div class="map-tools">
