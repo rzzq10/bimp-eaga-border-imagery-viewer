@@ -42,13 +42,15 @@ let currentBasemapIndex = 0;
 
 let activeBasemap = null;
 
-let aoilayer = null;
+let aoiLayer = null;
 
 let activeImageryLayer = null;
 
 let comparisonBeforeLayer = null;
 
 let comparisonAfterLayer = null;
+
+let comparisonRenderRequestId = 0;
 
 let previouslyVisibleDatasetIds = [];
 
@@ -129,10 +131,10 @@ const POSTPROCESSING_DATASETS = [
 
   {
     name:
-      "Deforestation — Nov to Dec",
+      "Deforestation Nov to Dec",
 
     periodLabel:
-      "Nov 2025 – Dec 2025",
+      "Nov 2025 Dec 2025",
 
     startDate:
       "2025-11-01",
@@ -146,10 +148,10 @@ const POSTPROCESSING_DATASETS = [
 
   {
     name:
-      "Deforestation — Dec to Jan",
+      "Deforestation Dec to Jan",
 
     periodLabel:
-      "Dec 2025 – Jan 2026",
+      "Dec 2025 Jan 2026",
 
     startDate:
       "2025-12-01",
@@ -163,10 +165,10 @@ const POSTPROCESSING_DATASETS = [
 
   {
     name:
-      "Deforestation — Jan to Feb",
+      "Deforestation Jan to Feb",
 
     periodLabel:
-      "Jan 2026 – Feb 2026",
+      "Jan 2026 Feb 2026",
 
     startDate:
       "2026-01-01",
@@ -180,10 +182,10 @@ const POSTPROCESSING_DATASETS = [
 
   {
     name:
-      "Deforestation — Feb to Mar",
+      "Deforestation Feb to Mar",
 
     periodLabel:
-      "Feb 2026 – Mar 2026",
+      "Feb 2026 Mar 2026",
 
     startDate:
       "2026-02-01",
@@ -197,10 +199,10 @@ const POSTPROCESSING_DATASETS = [
 
   {
     name:
-      "Deforestation — Mar to Apr",
+      "Deforestation Mar to Apr",
 
     periodLabel:
-      "Mar 2026 – Apr 2026",
+      "Mar 2026 Apr 2026",
 
     startDate:
       "2026-03-01",
@@ -214,10 +216,10 @@ const POSTPROCESSING_DATASETS = [
 
   {
     name:
-      "Deforestation — Overall",
+      "Deforestation Overall",
 
     periodLabel:
-      "Nov 2025 – Apr 2026",
+      "Nov 2025 Apr 2026",
 
     startDate:
       "2025-11-01",
@@ -231,10 +233,10 @@ const POSTPROCESSING_DATASETS = [
 
     {
     name:
-      "Infrastructure Detection — Overall",
+      "Infrastructure Detection” Overall",
 
     periodLabel:
-      "Nov 2025 – Apr 2026",
+      "Nov 2025 Apr 2026",
 
     startDate:
       "2025-11-01",
@@ -538,6 +540,59 @@ const map =
       map
     );
 
+    const comparisonMapLabels =
+      document.createElement(
+        "div"
+      );
+
+    comparisonMapLabels.className =
+      "comparison-map-labels";
+
+    comparisonMapLabels.hidden =
+      true;
+
+    comparisonMapLabels.innerHTML =
+      `
+        <div class="comparison-map-label before">
+
+          <span>
+            Before
+          </span>
+
+          <strong id="comparisonBeforeMapName">
+            Select imagery
+          </strong>
+
+        </div>
+
+        <div class="comparison-map-label after">
+
+          <span>
+            After
+          </span>
+
+          <strong id="comparisonAfterMapName">
+            Select imagery
+          </strong>
+
+        </div>
+      `;
+
+    map.getContainer()
+      .parentElement
+      .appendChild(
+        comparisonMapLabels
+      );
+
+    const comparisonBeforeMapName =
+      document.getElementById(
+        "comparisonBeforeMapName"
+      );
+
+    const comparisonAfterMapName =
+      document.getElementById(
+        "comparisonAfterMapName"
+      );
 
 // =========================
 // BASEMAP MANAGEMENT
@@ -817,7 +872,7 @@ function updateMapCoordinates(event) {
 function clearMapCoordinates() {
 
   mapCoordinates.innerHTML =
-    "Lat: — &nbsp; Lon: —";
+    "Lat: ” &nbsp; Lon: ”";
 
 }
 
@@ -893,7 +948,7 @@ function toggleComparisonPanel() {
 
 async function loadPostProcessingDatasets() {
 
-  let loadedCount =
+  let registeredCount =
     0;
 
   for (
@@ -901,76 +956,11 @@ async function loadPostProcessingDatasets() {
     POSTPROCESSING_DATASETS
   ) {
 
-    try {
+    const detectionColor =
+      config.color ||
+      "rgba(255, 35, 35, 0.85)";
 
-      const filePath =
-        `./data/postprocessing/${config.filename}`;
-
-      const response =
-        await fetch(
-          filePath
-        );
-
-      if (
-        !response.ok
-      ) {
-
-        throw new Error(
-          `${config.filename}: ${response.status}`
-        );
-
-      }
-
-      const arrayBuffer =
-        await response.arrayBuffer();
-
-      const georaster =
-        await parseGeoraster(
-          arrayBuffer
-        );
-
-      const detectionColor =
-        config.color ||
-        "rgba(255, 35, 35, 0.85)";
-
-      const rasterLayer =
-        new GeoRasterLayer(
-          {
-            projection:
-              getProjectionLabel(
-                georaster.projection
-              ),
-
-            georaster:
-              georaster,
-
-            opacity:
-              1,
-
-            resolution:
-              256,
-
-            pixelValuesToColorFn:
-              function (values) {
-
-                const value =
-                  values[0];
-
-                if (
-                  value === 1
-                ) {
-
-                  return detectionColor;
-
-                }
-
-                return null;
-
-              }
-          }
-        );
-
-      const dataset = {
+    const dataset = {
 
         id:
           createDatasetId(),
@@ -1013,27 +1003,40 @@ async function loadPostProcessingDatasets() {
           config.filename,
 
         fileSize:
-          arrayBuffer.byteLength,
+          0,
 
         format:
           "GeoTIFF",
 
         width:
-          georaster.width,
+          null,
 
         height:
-          georaster.height,
+          null,
 
         projection:
-          getProjectionLabel(
-            georaster.projection
-          ),
+          "Not loaded",
 
         georaster:
-          georaster,
+          null,
 
         layer:
-          rasterLayer
+          null,
+
+        filePath:
+          `./data/postprocessing/${config.filename}`,
+
+        loaded:
+          false,
+
+        loading:
+          false,
+
+        loadError:
+          null,
+
+        loadingPromise:
+          null
 
       };
 
@@ -1041,16 +1044,7 @@ async function loadPostProcessingDatasets() {
         dataset
       );
 
-      loadedCount++;
-
-    } catch (error) {
-
-      console.error(
-        "Postprocessing load error:",
-        error
-      );
-
-    }
+    registeredCount++;
 
   }
 
@@ -1070,18 +1064,186 @@ async function loadPostProcessingDatasets() {
   updateComparisonOptions();
 
   if (
-    loadedCount > 0
+    registeredCount > 0
   ) {
 
     showToast(
-      `${loadedCount} detection layers loaded.`
+      `${registeredCount} datasets ready. Open a layer to load it.`
     );
 
   } else {
 
     showToast(
-      "No postprocessing layers could be loaded."
+      "No postprocessing datasets were configured."
     );
+
+  }
+
+}
+
+function createRasterLayer(dataset) {
+
+  return new GeoRasterLayer(
+    {
+      georaster:
+        dataset.georaster,
+
+      opacity:
+        1,
+
+      resolution:
+        128,
+
+      pixelValuesToColorFn:
+        function (values) {
+
+          if (
+            values[0] === 1
+          ) {
+
+            return (
+              dataset.color ||
+              "rgba(255, 35, 35, 0.85)"
+            );
+
+          }
+
+          return null;
+
+        }
+    }
+  );
+
+}
+
+async function ensureDatasetLoaded(dataset) {
+
+  if (
+    dataset.georaster &&
+    dataset.layer
+  ) {
+
+    dataset.loaded =
+      true;
+
+    return dataset;
+
+  }
+
+  if (
+    dataset.loadingPromise
+  ) {
+
+    return dataset.loadingPromise;
+
+  }
+
+  if (
+    !dataset.filePath
+  ) {
+
+    throw new Error(
+      `No source file is available for ${dataset.name}.`
+    );
+
+  }
+
+  dataset.loading =
+    true;
+
+  dataset.loadError =
+    null;
+
+  renderImageryCatalogue();
+
+  dataset.loadingPromise =
+    (async function () {
+
+      const response =
+        await fetch(
+          dataset.filePath
+        );
+
+      if (
+        !response.ok
+      ) {
+
+        throw new Error(
+          `${dataset.filename}: ${response.status}`
+        );
+
+      }
+
+      const arrayBuffer =
+        await response.arrayBuffer();
+
+      const georaster =
+        await parseGeoraster(
+          arrayBuffer
+        );
+
+      dataset.fileSize =
+        arrayBuffer.byteLength;
+
+      dataset.width =
+        georaster.width;
+
+      dataset.height =
+        georaster.height;
+
+      dataset.projection =
+        getProjectionLabel(
+          georaster.projection
+        );
+
+      dataset.georaster =
+        georaster;
+
+      dataset.layer =
+        createRasterLayer(
+          dataset
+        );
+
+      dataset.loaded =
+        true;
+
+      return dataset;
+
+    })();
+
+  try {
+
+    return await dataset.loadingPromise;
+
+  } catch (error) {
+
+    dataset.loaded =
+      false;
+
+    dataset.loadError =
+      error.message ||
+      "GeoTIFF loading failed.";
+
+    console.error(
+      "GeoTIFF lazy-load error:",
+      error
+    );
+
+    showToast(
+      `Unable to load ${dataset.name}. Check that the TIFF exists locally.`
+    );
+
+    throw error;
+
+  } finally {
+
+    dataset.loading =
+      false;
+
+    dataset.loadingPromise =
+      null;
+
+    renderImageryCatalogue();
 
   }
 
@@ -1245,6 +1407,9 @@ async function importGeoTiff(event) {
       source:
         source,
 
+      category:
+        "Imported",
+
       visible:
         false,
 
@@ -1268,8 +1433,23 @@ async function importGeoTiff(event) {
           georaster.projection
         ),
 
+      georaster:
+        georaster,
+
       layer:
-        rasterLayer
+        rasterLayer,
+
+      loaded:
+        true,
+
+      loading:
+        false,
+
+      loadError:
+        null,
+
+      loadingPromise:
+        null
 
     };
 
@@ -1329,7 +1509,7 @@ async function importGeoTiff(event) {
 // ACTIVATE IMAGERY
 // =========================
 
-function activateImagery(
+async function activateImagery(
   datasetId,
   zoomToLayer = false
 ) {
@@ -1348,6 +1528,28 @@ function activateImagery(
     !dataset
   ) {
     return;
+  }
+
+  if (
+    !dataset.loaded
+  ) {
+
+    showToast(
+      `Loading ${dataset.name}...`
+    );
+
+  }
+
+  try {
+
+    await ensureDatasetLoaded(
+      dataset
+    );
+
+  } catch (error) {
+
+    return;
+
   }
 
   activeImageryId =
@@ -1411,7 +1613,7 @@ function activateImagery(
 
 }
 
-function toggleImageryVisibility(
+async function toggleImageryVisibility(
   datasetId
 ) {
 
@@ -1443,6 +1645,28 @@ function toggleImageryVisibility(
       false;
 
   } else {
+
+    if (
+      !dataset.loaded
+    ) {
+
+      showToast(
+        `Loading ${dataset.name}...`
+      );
+
+    }
+
+    try {
+
+      await ensureDatasetLoaded(
+        dataset
+      );
+
+    } catch (error) {
+
+      return;
+
+    }
 
     dataset.layer.addTo(
       map
@@ -1507,9 +1731,40 @@ function renderImageryCatalogue() {
       .trim()
       .toLowerCase();
 
+  function getCatalogueCategory(
+    dataset
+  ) {
+
+    if (
+      dataset.category ===
+      "Deforestation"
+    ) {
+
+      return "Deforestation";
+
+    }
+
+    if (
+      dataset.category ===
+      "Infrastructure"
+    ) {
+
+      return "Infrastructure";
+
+    }
+
+    return "Imported";
+
+  }
+
   const filteredDatasets =
     imageryDatasets.filter(
       function (dataset) {
+
+        const category =
+          getCatalogueCategory(
+            dataset
+          );
 
         return (
           dataset.name
@@ -1525,6 +1780,12 @@ function renderImageryCatalogue() {
             ) ||
 
           dataset.source
+            .toLowerCase()
+            .includes(
+              searchValue
+            ) ||
+
+          category
             .toLowerCase()
             .includes(
               searchValue
@@ -1570,107 +1831,230 @@ function renderImageryCatalogue() {
 
   } else {
 
-    filteredDatasets.forEach(
-      function (dataset) {
+    const catalogueGroups = [
+      {
+        category:
+          "Deforestation",
 
-        const card =
-          document.createElement(
-            "article"
+        label:
+          "Deforestation",
+
+        className:
+          "deforestation"
+      },
+
+      {
+        category:
+          "Infrastructure",
+
+        label:
+          "Infrastructure",
+
+        className:
+          "infrastructure"
+      },
+
+      {
+        category:
+          "Imported",
+
+        label:
+          "Manually Imported Imagery",
+
+        className:
+          "imported"
+      }
+    ];
+
+    catalogueGroups.forEach(
+      function (group) {
+
+        const groupDatasets =
+          filteredDatasets.filter(
+            function (dataset) {
+
+              return (
+                getCatalogueCategory(
+                  dataset
+                ) ===
+                group.category
+              );
+
+            }
           );
-
-        card.className =
-          "imagery-card";
 
         if (
-          dataset.id ===
-          activeImageryId
+          groupDatasets.length === 0
         ) {
 
-          card.classList.add(
-            "active"
-          );
+          return;
 
         }
 
-        card.innerHTML =
-          `
-            <div class="imagery-thumbnail">
-              GeoTIFF
-            </div>
+        const groupSection =
+          document.createElement(
+            "section"
+          );
 
-            <div class="imagery-card-content">
+        groupSection.className =
+          `imagery-group ${group.className}`;
+
+        groupSection.innerHTML =
+          `
+            <div class="imagery-group-header">
+
+              <span
+                class="imagery-group-marker"
+                aria-hidden="true"
+              ></span>
 
               <h3>
-                ${escapeHtml(dataset.name)}
+                ${escapeHtml(group.label)}
               </h3>
 
-              <p>
-                ${
-                  dataset.periodLabel ||
-                  formatDate(dataset.date)
-                }
-              </p>
-
-              <span class="imagery-source">
-                ${escapeHtml(dataset.source)}
+              <span class="imagery-group-count">
+                ${groupDatasets.length}
               </span>
 
             </div>
 
-            <button
-              class="
-                imagery-visibility-button
-                ${dataset.visible ? "visible" : ""}
-              "
-              type="button"
-              title="${
-                dataset.visible
-                  ? "Hide imagery"
-                  : "Show imagery"
-              }"
-              aria-label="${
-                dataset.visible
-                  ? "Hide imagery"
-                  : "Show imagery"
-              }"
-              aria-pressed="${dataset.visible}"
-            >
-              <span class="visibility-eye"></span>
-            </button>
+            <div class="imagery-group-cards"></div>
           `;
 
-        card.addEventListener(
-          "click",
-          function () {
-
-            activateImagery(
-              dataset.id,
-              true
-            );
-
-          }
-        );
-
-        const visibilityButton =
-          card.querySelector(
-            ".imagery-visibility-button"
+        const groupCards =
+          groupSection.querySelector(
+            ".imagery-group-cards"
           );
 
-        visibilityButton.addEventListener(
-          "click",
-          function (event) {
+        groupDatasets.forEach(
+          function (dataset) {
 
-            event.stopPropagation();
+            const card =
+              document.createElement(
+                "article"
+              );
 
-            toggleImageryVisibility(
-              dataset.id
+            card.className =
+              "imagery-card";
+
+            if (
+              dataset.id ===
+              activeImageryId
+            ) {
+
+              card.classList.add(
+                "active"
+              );
+
+            }
+
+            card.innerHTML =
+              `
+                <div class="imagery-thumbnail">
+                  GeoTIFF
+                </div>
+
+                <div class="imagery-card-content">
+
+                  <h3>
+                    ${escapeHtml(dataset.name)}
+                  </h3>
+
+                  <p>
+                    ${
+                      dataset.periodLabel ||
+                      formatDate(dataset.date)
+                    }
+                  </p>
+
+                  <span
+                    class="
+                      imagery-source
+                      ${dataset.loadError ? "error" : ""}
+                    "
+                  >
+                    ${
+                      dataset.loading
+                        ? "Loading GeoTIFF..."
+                        : dataset.loadError
+                        ? "File unavailable · click to retry"
+                        : escapeHtml(dataset.source)
+                    }
+                  </span>
+
+                </div>
+
+                <button
+                  class="
+                    imagery-visibility-button
+                    ${dataset.visible ? "visible" : ""}
+                  "
+                  type="button"
+                  ${dataset.loading ? "disabled" : ""}
+                  aria-busy="${dataset.loading}"
+                  title="${
+                    dataset.loading
+                      ? "Loading imagery"
+                      : dataset.loadError
+                      ? "Retry loading imagery"
+                      : dataset.visible
+                      ? "Hide imagery"
+                      : "Show imagery"
+                  }"
+                  aria-label="${
+                    dataset.loading
+                      ? "Loading imagery"
+                      : dataset.loadError
+                      ? "Retry loading imagery"
+                      : dataset.visible
+                      ? "Hide imagery"
+                      : "Show imagery"
+                  }"
+                  aria-pressed="${dataset.visible}"
+                >
+                  <span class="visibility-eye"></span>
+                </button>
+              `;
+
+            card.addEventListener(
+              "click",
+              function () {
+
+                activateImagery(
+                  dataset.id,
+                  true
+                );
+
+              }
+            );
+
+            const visibilityButton =
+              card.querySelector(
+                ".imagery-visibility-button"
+              );
+
+            visibilityButton.addEventListener(
+              "click",
+              function (event) {
+
+                event.stopPropagation();
+
+                toggleImageryVisibility(
+                  dataset.id
+                );
+
+              }
+            );
+
+            groupCards.appendChild(
+              card
             );
 
           }
         );
 
         imageryList.appendChild(
-          card
+          groupSection
         );
 
       }
@@ -1681,7 +2065,7 @@ function renderImageryCatalogue() {
   datasetCount.textContent =
     imageryDatasets.length;
 
-}
+  }
 
 
 // =========================
@@ -1742,7 +2126,47 @@ function getActiveDataset() {
 // COMPARISON OPTIONS
 // =========================
 
+function getComparisonDisplayName(
+  dataset
+) {
+
+  const dateLabel =
+    dataset.periodLabel ||
+    formatDate(
+      dataset.date
+    );
+
+  if (
+    dataset.category ===
+    "Deforestation"
+  ) {
+
+    const shortName =
+      dataset.name.replace(
+        /^Deforestation\s*[—-]\s*/,
+        ""
+      );
+
+    return (
+      `${shortName} · ${dateLabel}`
+    );
+
+  }
+
+  return (
+    `${dataset.name} · ${dateLabel}`
+  );
+
+}
+
+
 function updateComparisonOptions() {
+
+  const previousBefore =
+    beforeImagerySelect.value;
+
+  const previousAfter =
+    afterImagerySelect.value;
 
   const comparableDatasets =
     imageryDatasets.filter(
@@ -1761,16 +2185,15 @@ function updateComparisonOptions() {
       .map(
         function (dataset) {
 
-          const dateLabel =
-            dataset.periodLabel ||
-            formatDate(
-              dataset.date
-            );
-
           return `
             <option value="${dataset.id}">
-              ${escapeHtml(dataset.name)}
-              — ${escapeHtml(dateLabel)}
+              ${
+                escapeHtml(
+                  getComparisonDisplayName(
+                    dataset
+                  )
+                )
+              }
             </option>
           `;
 
@@ -1781,18 +2204,62 @@ function updateComparisonOptions() {
   beforeImagerySelect.innerHTML =
     `
       <option value="">
-        Select imagery
+        Select before imagery
       </option>
+
       ${options}
     `;
 
   afterImagerySelect.innerHTML =
     `
       <option value="">
-        Select imagery
+        Select after imagery
       </option>
+
       ${options}
     `;
+
+  const beforeStillExists =
+    comparableDatasets.some(
+      function (dataset) {
+
+        return (
+          dataset.id ===
+          previousBefore
+        );
+
+      }
+    );
+
+  const afterStillExists =
+    comparableDatasets.some(
+      function (dataset) {
+
+        return (
+          dataset.id ===
+          previousAfter
+        );
+
+      }
+    );
+
+  if (
+    beforeStillExists
+  ) {
+
+    beforeImagerySelect.value =
+      previousBefore;
+
+  }
+
+  if (
+    afterStillExists
+  ) {
+
+    afterImagerySelect.value =
+      previousAfter;
+
+  }
 
   const hasEnoughImagery =
     comparableDatasets.length >= 2;
@@ -1830,7 +2297,7 @@ function createComparisonLayer(
         ) / 100,
 
       resolution:
-        256,
+        128,
 
       pixelValuesToColorFn:
         function (values) {
@@ -1892,6 +2359,9 @@ function clearComparisonLayers() {
   comparisonAfterLayer =
     null;
 
+  comparisonMapLabels.hidden =
+    true;
+
 }
 
 
@@ -1915,8 +2385,53 @@ function applyComparisonClip() {
 
 }
 
+function setComparisonLoading(
+  isLoading
+) {
 
-function renderComparisonLayers() {
+  comparisonPanel.classList.toggle(
+    "loading",
+    isLoading
+  );
+
+  const comparableCount =
+    imageryDatasets.filter(
+      function (dataset) {
+
+        return (
+          dataset.comparisonEligible !==
+          false
+        );
+
+      }
+    ).length;
+
+  const hasEnoughImagery =
+    comparableCount >= 2;
+
+  beforeImagerySelect.disabled =
+    isLoading ||
+    !hasEnoughImagery;
+
+  afterImagerySelect.disabled =
+    isLoading ||
+    !hasEnoughImagery;
+
+  swapComparisonButton.disabled =
+    isLoading ||
+    !hasEnoughImagery;
+
+  comparisonSlider.disabled =
+    isLoading ||
+    !comparisonToggle.checked;
+
+  opacitySlider.disabled =
+    isLoading ||
+    !comparisonToggle.checked;
+
+}
+
+async function renderComparisonLayers() {
 
   clearComparisonLayers();
 
@@ -1924,8 +2439,10 @@ function renderComparisonLayers() {
     imageryDatasets.find(
       function (dataset) {
 
-        return dataset.id ===
-          beforeImagerySelect.value;
+        return (
+          dataset.id ===
+          beforeImagerySelect.value
+        );
 
       }
     );
@@ -1934,8 +2451,10 @@ function renderComparisonLayers() {
     imageryDatasets.find(
       function (dataset) {
 
-        return dataset.id ===
-          afterImagerySelect.value;
+        return (
+          dataset.id ===
+          afterImagerySelect.value
+        );
 
       }
     );
@@ -1966,37 +2485,119 @@ function renderComparisonLayers() {
 
   }
 
-  comparisonBeforeLayer =
-    createComparisonLayer(
-      beforeDataset,
-      "comparisonBeforePane"
-    );
+  const requestId =
+    ++comparisonRenderRequestId;
 
-  comparisonAfterLayer =
-    createComparisonLayer(
-      afterDataset,
-      "comparisonAfterPane"
-    );
+  const requestedBeforeId =
+    beforeDataset.id;
 
-  comparisonBeforeLayer.addTo(
-    map
+  const requestedAfterId =
+    afterDataset.id;
+
+  setComparisonLoading(
+    true
   );
 
-  comparisonAfterLayer.addTo(
-    map
-  );
+  try {
 
-  activeBasemap.bringToBack();
+    await Promise.all(
+      [
+        ensureDatasetLoaded(
+          beforeDataset
+        ),
 
-  if (
-    aoiLayer
-  ) {
+        ensureDatasetLoaded(
+          afterDataset
+        )
+      ]
+    );
 
-    aoiLayer.bringToFront();
+    const requestIsStale =
+      requestId !==
+      comparisonRenderRequestId;
+
+    const selectionChanged =
+      beforeImagerySelect.value !==
+        requestedBeforeId ||
+      afterImagerySelect.value !==
+        requestedAfterId;
+
+    if (
+      requestIsStale ||
+      selectionChanged ||
+      !comparisonToggle.checked
+    ) {
+
+      return;
+
+    }
+
+    comparisonBeforeLayer =
+      createComparisonLayer(
+        beforeDataset,
+        "comparisonBeforePane"
+      );
+
+    comparisonAfterLayer =
+      createComparisonLayer(
+        afterDataset,
+        "comparisonAfterPane"
+      );
+
+    comparisonBeforeLayer.addTo(
+      map
+    );
+
+    comparisonAfterLayer.addTo(
+      map
+    );
+
+    activeBasemap.bringToBack();
+
+    if (
+      aoiLayer
+    ) {
+
+      aoiLayer.bringToFront();
+
+    }
+
+    comparisonBeforeMapName.textContent =
+      getComparisonDisplayName(
+        beforeDataset
+      );
+
+    comparisonAfterMapName.textContent =
+      getComparisonDisplayName(
+        afterDataset
+      );
+
+    comparisonMapLabels.hidden =
+      false;
+
+    applyComparisonClip();
+
+  } catch (error) {
+
+    console.error(
+      "Comparison render error:",
+      error
+    );
+
+  } finally {
+
+    if (
+      requestId ===
+      comparisonRenderRequestId
+    ) {
+
+      setComparisonLoading(
+        false
+      );
+
+    }
 
   }
-
-  applyComparisonClip();
 
 }
 
@@ -2074,6 +2675,7 @@ function enableComparison() {
     function (dataset) {
 
       if (
+        dataset.layer &&
         map.hasLayer(
           dataset.layer
         )
@@ -2087,6 +2689,9 @@ function enableComparison() {
 
     }
   );
+
+  imageryDetailsPanel.hidden =
+    true;
 
   comparisonSlider.disabled =
     false;
@@ -2118,7 +2723,8 @@ function disableComparison() {
       if (
         previouslyVisibleDatasetIds.includes(
           dataset.id
-        )
+        ) &&
+        dataset.layer
       ) {
 
         dataset.layer.addTo(
