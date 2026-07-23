@@ -2062,7 +2062,8 @@ select:focus-visible {
 .map-information {
   position: absolute;
   right: 18px;
-  bottom: 177px;
+  top: 58px;
+  bottom: auto;
 
   z-index: 800;
 

@@ -2808,11 +2808,10 @@ function updateMapCoordinates(event) {
 
 }
 
-
 function clearMapCoordinates() {
 
   mapCoordinates.innerHTML =
-    "Lat: ” &nbsp; Lon: ”";
+    "Lat: — &nbsp; Lon: —";
 
 }
 
