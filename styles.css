@@ -1369,7 +1369,7 @@ select:focus-visible {
 
 .imagery-details-panel {
   position: absolute;
-  top: 70px;
+  top: 106px;
   right: 18px;
 
   z-index: 800;
@@ -2062,7 +2062,7 @@ select:focus-visible {
 .map-information {
   position: absolute;
   right: 18px;
-  top: 58px;
+  top: 68px;
   bottom: auto;
 
   z-index: 800;
