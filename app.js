@@ -2710,8 +2710,20 @@ async function loadDetectionSitePolygons() {
       detectionLocationsLayer
     ) {
 
-      detectionLocationsLayer
-        .bringToFront();
+      detectionLocationsLayer.eachLayer(
+        function (layer) {
+
+          if (
+            typeof layer.bringToFront ===
+            "function"
+          ) {
+
+            layer.bringToFront();
+
+          }
+
+        }
+      );
 
     }
 
@@ -5626,8 +5638,20 @@ function switchWorkspaceMode(
       detectionLocationsLayer
     ) {
 
-      detectionLocationsLayer
-        .bringToFront();
+      detectionLocationsLayer.eachLayer(
+        function (layer) {
+
+          if (
+            typeof layer.bringToFront ===
+            "function"
+          ) {
+
+            layer.bringToFront();
+
+          }
+
+        }
+      );
 
     }
 
