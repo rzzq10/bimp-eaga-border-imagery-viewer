@@ -1,7 +1,5 @@
 # Geospatial datasets
 data/
-*.tif
-*.tiff
 *.shp
 *.shx
 *.dbf
