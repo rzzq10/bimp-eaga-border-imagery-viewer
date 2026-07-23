@@ -4826,3 +4826,8 @@ body.sensor-mode .sidebar-footer {
   }
 
 }
+
+body.sensor-mode .map-legend {
+  display:
+    none;
+}

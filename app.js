@@ -46,6 +46,8 @@ let aoiLayer = null;
 
 let detectionLocationsLayer = null;
 
+let detectionSitePolygonsLayer = null;
+
 let siteIntelligenceDialog = null;
 
 let activeImageryLayer = null;
@@ -2519,6 +2521,214 @@ function loadDetectionLocations() {
   detectionLocationsLayer.addTo(
     map
   );
+
+}
+
+async function loadDetectionSitePolygons() {
+
+  try {
+
+    const response =
+      await fetch(
+        "./data/Changes_AOI.geojson"
+      );
+
+    if (
+      !response.ok
+    ) {
+
+      throw new Error(
+        `GeoJSON request failed: ${response.status}`
+      );
+
+    }
+
+    const geojson =
+      await response.json();
+
+    detectionSitePolygonsLayer =
+      L.geoJSON(
+        geojson,
+        {
+          style: function () {
+
+            return {
+              color: "#ff3b30",
+              weight: 2,
+              opacity: 0.95,
+              fillColor: "#ff3b30",
+              fillOpacity: 0.12,
+              dashArray: "7 5"
+            };
+
+          },
+
+          onEachFeature:
+            function (
+              feature,
+              layer
+            ) {
+
+              const properties =
+                feature.properties || {};
+
+              const siteName =
+                properties.Name ||
+                "Deforestation Site";
+
+              const siteNumberMatch =
+                siteName.match(
+                  /\d+/
+                );
+
+              const siteNumber =
+                siteNumberMatch
+                  ? siteNumberMatch[0]
+                  : null;
+
+              const locationId =
+                siteNumber
+                  ? `DEF-${siteNumber.padStart(2, "0")}`
+                  : null;
+
+              const location =
+                DETECTION_LOCATIONS.find(
+                  function (item) {
+
+                    return (
+                      item.id ===
+                      locationId
+                    );
+
+                  }
+                );
+
+              const area =
+                Number(
+                  properties.Area
+                );
+
+              const totalLoss =
+                Number(
+                  properties.TotalLoss
+                );
+
+              layer.bindTooltip(
+                `
+                  <strong>
+                    ${escapeHtml(siteName)}
+                  </strong>
+
+                  <br>
+
+                  Monitoring area:
+                  ${
+                    Number.isFinite(area)
+                      ? `${area.toFixed(2)} km²`
+                      : "Not available"
+                  }
+
+                  <br>
+
+                  Total detected loss:
+                  ${
+                    Number.isFinite(totalLoss)
+                      ? totalLoss.toFixed(2)
+                      : "Not available"
+                  }
+                `,
+                {
+                  sticky: true,
+                  direction: "top",
+                  className:
+                    "detection-polygon-tooltip"
+                }
+              );
+
+              layer.on(
+                "mouseover",
+                function () {
+
+                  layer.setStyle(
+                    {
+                      weight: 3,
+                      fillOpacity: 0.24,
+                      dashArray: null
+                    }
+                  );
+
+                  layer.bringToFront();
+
+                }
+              );
+
+              layer.on(
+                "mouseout",
+                function () {
+
+                  detectionSitePolygonsLayer
+                    .resetStyle(
+                      layer
+                    );
+
+                }
+              );
+
+              layer.on(
+                "click",
+                function () {
+
+                  if (
+                    location
+                  ) {
+
+                    openSiteIntelligence(
+                      location
+                    );
+
+                  }
+
+                }
+              );
+
+            }
+        }
+      );
+
+    if (
+      activeWorkspaceMode ===
+      "imagery"
+    ) {
+
+      detectionSitePolygonsLayer.addTo(
+        map
+      );
+
+    }
+
+    if (
+      detectionLocationsLayer
+    ) {
+
+      detectionLocationsLayer
+        .bringToFront();
+
+    }
+
+  } catch (
+    error
+  ) {
+
+    console.error(
+      "Unable to load detection-site polygons:",
+      error
+    );
+
+    showToast(
+      "Detection-site polygons could not be loaded."
+    );
+
+  }
 
 }
 
@@ -5344,6 +5554,19 @@ function switchWorkspaceMode(
     }
 
     if (
+      detectionSitePolygonsLayer &&
+      map.hasLayer(
+        detectionSitePolygonsLayer
+      )
+    ) {
+
+      map.removeLayer(
+        detectionSitePolygonsLayer
+      );
+
+    }
+
+    if (
       sensorLocationsLayer &&
       !map.hasLayer(sensorLocationsLayer)
     ) {
@@ -5358,7 +5581,7 @@ function switchWorkspaceMode(
       "Sensor Network opened with demonstration data."
     );
 
-  } else {
+    } else {
 
     if (
       sensorLocationsLayer &&
@@ -5371,14 +5594,40 @@ function switchWorkspaceMode(
 
     }
 
+    // Restore deforestation polygons first
+    if (
+      detectionSitePolygonsLayer &&
+      !map.hasLayer(
+        detectionSitePolygonsLayer
+      )
+    ) {
+
+      detectionSitePolygonsLayer.addTo(
+        map
+      );
+
+    }
+
+    // Restore detection markers above polygons
     if (
       detectionLocationsLayer &&
-      !map.hasLayer(detectionLocationsLayer)
+      !map.hasLayer(
+        detectionLocationsLayer
+      )
     ) {
 
       detectionLocationsLayer.addTo(
         map
       );
+
+    }
+
+    if (
+      detectionLocationsLayer
+    ) {
+
+      detectionLocationsLayer
+        .bringToFront();
 
     }
 
@@ -5607,9 +5856,7 @@ sensorModeButton.addEventListener(
 // INITIALIZE APPLICATION
 // =========================
 
-loadBasemap(
-  currentBasemapIndex
-);
+loadBasemap(currentBasemapIndex);
 
 updateZoomLevel();
 
@@ -5620,6 +5867,8 @@ renderImageryCatalogue();
 loadAreaOfInterest();
 
 loadDetectionLocations();
+
+loadDetectionSitePolygons();
 
 createMapLegend();
 
