@@ -58,11 +58,13 @@ let comparisonAfterLayer = null;
 
 let comparisonRenderRequestId = 0;
 
-let previouslyVisibleDatasetIds = [];
-
 let activeImageryId = null;
 
 let pendingGeoTiffFile = null;
+
+let comparisonClipFrameId = null;
+
+const RASTER_RENDER_RESOLUTION = 64;
 
 let toastTimeout = null;
 
@@ -153,7 +155,10 @@ const POSTPROCESSING_DATASETS = [
       "2025-12-01",
 
     filename:
-      "LogDetMask_Nov-Dec.tif"
+      "LogDetMask_Nov-Dec.tif",
+
+    color:
+      "rgba(255, 209, 102, 0.95)"
   },
 
   {
@@ -170,7 +175,10 @@ const POSTPROCESSING_DATASETS = [
       "2026-01-01",
 
     filename:
-      "LogDetMask_Dec-Jan.tif"
+      "LogDetMask_Dec-Jan.tif",
+
+    color:
+      "rgba(255, 140, 66, 0.95)"
   },
 
   {
@@ -187,7 +195,10 @@ const POSTPROCESSING_DATASETS = [
       "2026-02-01",
 
     filename:
-      "LogDetMask_Jan-Feb.tif"
+      "LogDetMask_Jan-Feb.tif",
+
+    color:
+      "rgba(239, 71, 111, 0.95)"
   },
 
   {
@@ -204,7 +215,10 @@ const POSTPROCESSING_DATASETS = [
       "2026-03-01",
 
     filename:
-      "LogDetMask_Feb-Mar.tif"
+      "LogDetMask_Feb-Mar.tif",
+
+    color:
+      "rgba(155, 93, 229, 0.95)"
   },
 
   {
@@ -221,7 +235,10 @@ const POSTPROCESSING_DATASETS = [
       "2026-04-01",
 
     filename:
-      "LogDetMask_Mar-Apr.tif"
+      "LogDetMask_Mar-Apr.tif",
+
+    color:
+      "rgba(59, 130, 246, 0.95)"
   },
 
   {
@@ -238,7 +255,10 @@ const POSTPROCESSING_DATASETS = [
       "2026-04-01",
 
     filename:
-      "LogDetMask_Nov-Apr.tif"
+      "LogDetMask_Nov-Apr.tif",
+
+    color:
+      "rgba(255, 45, 45, 0.95)"
   },
 
     {
@@ -3031,7 +3051,7 @@ function createRasterLayer(dataset) {
         1,
 
       resolution:
-        128,
+        RASTER_RENDER_RESOLUTION,
 
       pixelValuesToColorFn:
         function (values) {
@@ -3100,7 +3120,11 @@ async function ensureDatasetLoaded(dataset) {
 
       const response =
         await fetch(
-          dataset.filePath
+          dataset.filePath,
+          {
+            cache:
+              "force-cache"
+          }
         );
 
       if (
@@ -3501,9 +3525,15 @@ async function activateImagery(
     !dataset.visible
   ) {
 
-    dataset.layer.addTo(
-      map
-    );
+    if (
+      !comparisonToggle.checked
+    ) {
+
+      dataset.layer.addTo(
+        map
+      );
+
+    }
 
     dataset.visible =
       true;
@@ -3576,9 +3606,18 @@ async function toggleImageryVisibility(
     dataset.visible
   ) {
 
-    map.removeLayer(
-      dataset.layer
-    );
+    if (
+      dataset.layer &&
+      map.hasLayer(
+        dataset.layer
+      )
+    ) {
+
+      map.removeLayer(
+        dataset.layer
+      );
+
+    }
 
     dataset.visible =
       false;
@@ -3607,9 +3646,15 @@ async function toggleImageryVisibility(
 
     }
 
-    dataset.layer.addTo(
-      map
-    );
+    if (
+      !comparisonToggle.checked
+    ) {
+
+      dataset.layer.addTo(
+        map
+      );
+
+    }
 
     dataset.visible =
       true;
@@ -4236,7 +4281,7 @@ function createComparisonLayer(
         ) / 100,
 
       resolution:
-        128,
+        RASTER_RENDER_RESOLUTION,
 
       pixelValuesToColorFn:
         function (values) {
@@ -4263,6 +4308,55 @@ function createComparisonLayer(
 
 }
 
+function getComparisonLayer(
+  dataset,
+  paneName
+) {
+
+  const cacheKey =
+    paneName ===
+      "comparisonBeforePane"
+      ? "_comparisonBeforeLayer"
+      : "_comparisonAfterLayer";
+
+  if (
+    !dataset[cacheKey]
+  ) {
+
+    dataset[cacheKey] =
+      createComparisonLayer(
+        dataset,
+        paneName
+      );
+
+  }
+
+  dataset[cacheKey].setOpacity(
+    Number(
+      opacitySlider.value
+    ) / 100
+  );
+
+  return dataset[cacheKey];
+
+}
+
+function clearLayerClip(layer) {
+
+  const container =
+    layer?.getContainer?.();
+
+  if (
+    container
+  ) {
+
+    container.style.clip =
+      "";
+
+  }
+
+}
+
 
 function clearComparisonLayers() {
 
@@ -4272,6 +4366,10 @@ function clearComparisonLayers() {
       comparisonBeforeLayer
     )
   ) {
+
+    clearLayerClip(
+      comparisonBeforeLayer
+    );
 
     map.removeLayer(
       comparisonBeforeLayer
@@ -4285,6 +4383,10 @@ function clearComparisonLayers() {
       comparisonAfterLayer
     )
   ) {
+
+    clearLayerClip(
+      comparisonAfterLayer
+    );
 
     map.removeLayer(
       comparisonAfterLayer
@@ -4306,21 +4408,114 @@ function clearComparisonLayers() {
 
 function applyComparisonClip() {
 
+  if (
+    !comparisonBeforeLayer ||
+    !comparisonAfterLayer
+  ) {
+
+    return;
+
+  }
+
+  const beforeContainer =
+    comparisonBeforeLayer
+      .getContainer?.();
+
+  const afterContainer =
+    comparisonAfterLayer
+      .getContainer?.();
+
+  if (
+    !beforeContainer ||
+    !afterContainer
+  ) {
+
+    return;
+
+  }
+
   const sliderValue =
-    Number(
-      comparisonSlider.value
+    Math.max(
+      0,
+      Math.min(
+        100,
+        Number(
+          comparisonSlider.value
+        )
+      )
     );
 
-  const afterPane =
-    map.getPane(
-      "comparisonAfterPane"
+  const topLeft =
+    map.containerPointToLayerPoint(
+      [0, 0]
     );
 
-  afterPane.style.clipPath =
-    `inset(0 0 0 ${sliderValue}%)`;
+  const bottomRight =
+    map.containerPointToLayerPoint(
+      map.getSize()
+    );
+
+  const splitPosition =
+    topLeft.x +
+    (
+      bottomRight.x -
+      topLeft.x
+    ) *
+    (
+      sliderValue / 100
+    );
+
+  beforeContainer.style.clip =
+    `rect(` +
+    `${topLeft.y}px, ` +
+    `${splitPosition}px, ` +
+    `${bottomRight.y}px, ` +
+    `${topLeft.x}px` +
+    `)`;
+
+  afterContainer.style.clip =
+    `rect(` +
+    `${topLeft.y}px, ` +
+    `${bottomRight.x}px, ` +
+    `${bottomRight.y}px, ` +
+    `${splitPosition}px` +
+    `)`;
 
   comparisonDivider.style.left =
     `${sliderValue}%`;
+
+}
+
+function scheduleComparisonClip() {
+
+  if (
+    comparisonClipFrameId !==
+    null
+  ) {
+
+    cancelAnimationFrame(
+      comparisonClipFrameId
+    );
+
+  }
+
+  comparisonClipFrameId =
+    requestAnimationFrame(
+      function () {
+
+        comparisonClipFrameId =
+          null;
+
+        if (
+          comparisonToggle.checked
+        ) {
+
+          applyComparisonClip();
+
+        }
+
+      }
+    );
 
 }
 
@@ -4371,8 +4566,6 @@ function setComparisonLoading(
 }
 
 async function renderComparisonLayers() {
-
-  clearComparisonLayers();
 
   const beforeDataset =
     imageryDatasets.find(
@@ -4471,25 +4664,91 @@ async function renderComparisonLayers() {
 
     }
 
-    comparisonBeforeLayer =
-      createComparisonLayer(
+    const nextBeforeLayer =
+      getComparisonLayer(
         beforeDataset,
         "comparisonBeforePane"
       );
 
-    comparisonAfterLayer =
-      createComparisonLayer(
+    const nextAfterLayer =
+      getComparisonLayer(
         afterDataset,
         "comparisonAfterPane"
       );
 
-    comparisonBeforeLayer.addTo(
-      map
-    );
+    const previousBeforeLayer =
+      comparisonBeforeLayer;
 
-    comparisonAfterLayer.addTo(
-      map
-    );
+    const previousAfterLayer =
+      comparisonAfterLayer;
+
+    if (
+      previousBeforeLayer &&
+      previousBeforeLayer !==
+        nextBeforeLayer &&
+      map.hasLayer(
+        previousBeforeLayer
+      )
+    ) {
+
+      clearLayerClip(
+        previousBeforeLayer
+      );
+
+      map.removeLayer(
+        previousBeforeLayer
+      );
+
+    }
+
+    if (
+      previousAfterLayer &&
+      previousAfterLayer !==
+        nextAfterLayer &&
+      map.hasLayer(
+        previousAfterLayer
+      )
+    ) {
+
+      clearLayerClip(
+        previousAfterLayer
+      );
+
+      map.removeLayer(
+        previousAfterLayer
+      );
+
+    }
+
+    comparisonBeforeLayer =
+      nextBeforeLayer;
+
+    comparisonAfterLayer =
+      nextAfterLayer;
+
+    if (
+      !map.hasLayer(
+        comparisonBeforeLayer
+      )
+    ) {
+
+      comparisonBeforeLayer.addTo(
+        map
+      );
+
+    }
+
+    if (
+      !map.hasLayer(
+        comparisonAfterLayer
+      )
+    ) {
+
+      comparisonAfterLayer.addTo(
+        map
+      );
+
+    }
 
     activeBasemap.bringToBack();
 
@@ -4514,7 +4773,7 @@ async function renderComparisonLayers() {
     comparisonMapLabels.hidden =
       false;
 
-    applyComparisonClip();
+    scheduleComparisonClip();
 
   } catch (error) {
 
@@ -4593,23 +4852,6 @@ function enableComparison() {
 
   }
 
-  previouslyVisibleDatasetIds =
-    imageryDatasets
-      .filter(
-        function (dataset) {
-
-          return dataset.visible;
-
-        }
-      )
-      .map(
-        function (dataset) {
-
-          return dataset.id;
-
-        }
-      );
-
   imageryDatasets.forEach(
     function (dataset) {
 
@@ -4648,6 +4890,12 @@ function enableComparison() {
 
 function disableComparison() {
 
+  comparisonRenderRequestId++;
+
+  setComparisonLoading(
+    false
+  );
+
   clearComparisonLayers();
 
   comparisonSlider.disabled =
@@ -4660,14 +4908,29 @@ function disableComparison() {
     function (dataset) {
 
       if (
-        previouslyVisibleDatasetIds.includes(
-          dataset.id
-        ) &&
-        dataset.layer
+        dataset.visible &&
+        dataset.layer &&
+        !map.hasLayer(
+          dataset.layer
+        )
       ) {
 
         dataset.layer.addTo(
           map
+        );
+
+      }
+
+      if (
+        !dataset.visible &&
+        dataset.layer &&
+        map.hasLayer(
+          dataset.layer
+        )
+      ) {
+
+        map.removeLayer(
+          dataset.layer
         );
 
       }
@@ -4685,8 +4948,9 @@ function disableComparison() {
 
   }
 
-  previouslyVisibleDatasetIds =
-    [];
+  updateVisibleLayerCount();
+
+  renderImageryCatalogue();
 
 }
 
@@ -4776,7 +5040,7 @@ function updateComparisonSlider() {
     comparisonToggle.checked
   ) {
 
-    applyComparisonClip();
+    scheduleComparisonClip();
 
   }
 
@@ -5710,6 +5974,11 @@ map.on(
 map.on(
   "zoomend",
   updateZoomLevel
+);
+
+map.on(
+  "move zoom resize",
+  scheduleComparisonClip
 );
 
 
